@@ -1,10 +1,7 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart'; 
 
@@ -43,15 +40,7 @@ class IoTDashboard extends StatefulWidget {
 class _IoTDashboardState extends State<IoTDashboard> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
-
-  final int _maxDataPoints = 20;
-  final List<FlSpot> _temperatureData = [];
-  final List<FlSpot> _humidityData = [];
-  double _minY = 0;
-  double _maxY = 50;
-  int _sampleIndex = 0;
-  double _lastTemperature = 0;
-  double _lastHumidity = 0;
+  
   bool _isAuthenticated = false;
   bool _isConnected = false;
 
@@ -70,7 +59,6 @@ class _IoTDashboardState extends State<IoTDashboard> {
       );
       setState(() => _isAuthenticated = true);
       _checkFirebaseConnection();
-      _initializeDataListeners();
     } catch (e) {
       debugPrint("Auth Error: $e");
       if (mounted) {
@@ -88,65 +76,7 @@ class _IoTDashboardState extends State<IoTDashboard> {
     });
   }
 
-  void _initializeDataListeners() {
-    _dbRef.child('/esiot-db').onValue.listen((event) {
-      final data = event.snapshot.value as Map<dynamic, dynamic>?;
 
-      double temperature = _lastTemperature;
-      double humidity = _lastHumidity;
-
-      if (data != null) {
-        if (data['suhu'] != null) {
-          temperature = double.tryParse(data['suhu'].toString()) ?? temperature;
-        }
-        if (data['kelembapan'] != null) {
-          humidity = double.tryParse(data['kelembapan'].toString()) ?? humidity;
-        }
-      }
-
-      _lastTemperature = temperature;
-      _lastHumidity = humidity;
-
-      _appendChartData(temperature, humidity);
-    });
-  }
-
-  void _appendChartData(double temperature, double humidity) {
-    setState(() {
-      _temperatureData.add(FlSpot(_sampleIndex.toDouble(), temperature));
-      _humidityData.add(FlSpot(_sampleIndex.toDouble(), humidity));
-      _sampleIndex++;
-
-      if (_temperatureData.length > _maxDataPoints) {
-        _temperatureData.removeAt(0);
-      }
-      if (_humidityData.length > _maxDataPoints) {
-        _humidityData.removeAt(0);
-      }
-
-      _normalizeChartSpots(_temperatureData);
-      _normalizeChartSpots(_humidityData);
-      _updateYRange(temperature, humidity);
-    });
-  }
-
-  void _normalizeChartSpots(List<FlSpot> list) {
-    for (var i = 0; i < list.length; i++) {
-      list[i] = FlSpot(i.toDouble(), list[i].y);
-    }
-  }
-
-  void _updateYRange(double temperature, double humidity) {
-    final combined = [
-      ..._temperatureData.map((e) => e.y),
-      ..._humidityData.map((e) => e.y),
-    ];
-    if (combined.isEmpty) return;
-    final minValue = combined.reduce(min);
-    final maxValue = combined.reduce(max);
-    _minY = max(0, minValue - 8);
-    _maxY = max(maxValue + 8, 40);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -180,8 +110,6 @@ class _IoTDashboardState extends State<IoTDashboard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildStatusBanner(),
-            const SizedBox(height: 16),
-            _buildChartCard(),
             const SizedBox(height: 16),
             _buildSensorCard("🌡️ Suhu", "/esiot-db/suhu", "°C", Icons.thermostat, Colors.red),
             _buildSensorCard("💧 Kelembapan", "/esiot-db/kelembapan", "%", Icons.water_drop, Colors.blue),
@@ -235,7 +163,7 @@ Widget _buildStatusBanner() {
             contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             leading: CircleAvatar(
               radius: 26,
-              backgroundColor: color.withValues(alpha: 0.15),
+              backgroundColor: color.withOpacity(0.15),
               child: Icon(icon, color: color, size: 28),
             ),
             title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -243,152 +171,6 @@ Widget _buildStatusBanner() {
             trailing: Text("$value $unit", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildChartCard() {
-    final hasData = _temperatureData.isNotEmpty || _humidityData.isNotEmpty;
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Padding(
-        padding: const EdgeInsets.all(18.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.show_chart, color: Colors.deepPurple, size: 28),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    "Grafik Suhu & Kelembapan",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              "Dua garis dalam satu chart, tampil halus seperti gelombang dinamis.",
-              style: TextStyle(color: Colors.grey[700], fontSize: 14),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              height: 260,
-              child: hasData
-                  ? LineChart(
-                      LineChartData(
-                        minX: 0,
-                        maxX: _maxDataPoints.toDouble() - 1,
-                        minY: _minY,
-                        maxY: _maxY,
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          horizontalInterval: 10,
-                          getDrawingHorizontalLine: (value) => FlLine(
-                            color: Colors.grey.withValues(alpha: 0.18),
-                            strokeWidth: 1,
-                          ),
-                        ),
-                        titlesData: FlTitlesData(
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: 4,
-                              reservedSize: 30,
-                              getTitlesWidget: (value, meta) {
-                                return SideTitleWidget(
-                                  meta: meta,
-                                  space: 6,
-                                  child: Text(
-                                    value.toInt().toString(),
-                                    style: const TextStyle(color: Colors.black54, fontSize: 10),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: 10,
-                              reservedSize: 42,
-                              getTitlesWidget: (value, meta) {
-                                return SideTitleWidget(
-                                  meta: meta,
-                                  child: Text(
-                                    value.toInt().toString(),
-                                    style: const TextStyle(color: Colors.black54, fontSize: 10),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        ),
-                        borderData: FlBorderData(
-                          show: true,
-                          border: Border.all(color: Colors.grey.withValues(alpha: 0.24)),
-                        ),
-                        lineTouchData: LineTouchData(
-                          enabled: true,
-                          touchTooltipData: LineTouchTooltipData(
-                            tooltipBorderRadius: BorderRadius.circular(8),
-                            getTooltipColor: (spots) => Colors.black87,
-                            getTooltipItems: (touchedSpots) {
-                              return touchedSpots.map((spot) {
-                                final label = spot.barIndex == 0 ? 'Suhu' : 'Kelembapan';
-                                return LineTooltipItem(
-                                  '$label: ${spot.y.toStringAsFixed(1)}',
-                                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                );
-                              }).toList();
-                            },
-                          ),
-                        ),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: _temperatureData,
-                            isCurved: true,
-                            color: Colors.redAccent,
-                            barWidth: 4,
-                            dotData: FlDotData(show: false),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              color: Colors.redAccent.withValues(alpha: 0.18),
-                            ),
-                            curveSmoothness: 0.6,
-                          ),
-                          LineChartBarData(
-                            spots: _humidityData,
-                            isCurved: true,
-                            color: Colors.blueAccent,
-                            barWidth: 4,
-                            dotData: FlDotData(show: false),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              color: Colors.blueAccent.withValues(alpha: 0.18),
-                            ),
-                            curveSmoothness: 0.6,
-                          ),
-                        ],
-                      ),
-                    )
-                  : Center(
-                      child: Text(
-                        'Menunggu data suhu dan kelembapan...',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-            ),
-          ],
-        ),
       ),
     );
   }
