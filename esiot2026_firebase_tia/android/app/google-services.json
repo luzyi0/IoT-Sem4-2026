@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "587297725134",
+    "firebase_url": "https://iotia-e79cb-default-rtdb.firebaseio.com",
+    "project_id": "iotia-e79cb",
+    "storage_bucket": "iotia-e79cb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:587297725134:android:100d2d75bbb3c7c2ce8e9f",
+        "android_client_info": {
+          "package_name": "com.example.esiot2026_firebase_tia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNQjecEyxuShCgqIuJYkKGP4lM2hsViGs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
