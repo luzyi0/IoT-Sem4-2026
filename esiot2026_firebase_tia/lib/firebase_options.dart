@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -61,4 +58,14 @@ class DefaultFirebaseOptions {
     storageBucket: 'iotia-e79cb.firebasestorage.app',
   );
 
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBNQjecEyxuShCgqIuJYkKGP4lM2hsViGs',
+    appId:
+        '1:587297725134:web:100d2d75bbb3c7c2ce8e9f', // Assuming same project, web app ID
+    messagingSenderId: '587297725134',
+    projectId: 'iotia-e79cb',
+    databaseURL: 'https://iotia-e79cb-default-rtdb.firebaseio.com',
+    storageBucket: 'iotia-e79cb.firebasestorage.app',
+    authDomain: 'iotia-e79cb.firebaseapp.com',
+  );
 }
